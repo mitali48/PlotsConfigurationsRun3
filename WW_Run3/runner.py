@@ -3,9 +3,11 @@ import sys
 import ROOT
 from array import array
 from mkShapesRDF.lib.parse_cpp import ParseCpp
+from mkShapesRDF.shapeAnalysis.histo_utils import postPlot
 
 ROOT.gROOT.SetBatch(True)
 ROOT.TH1.SetDefaultSumw2(True)
+
 
 class RunAnalysis:
     r"""Class athat craeates ``dfs`` and runs the analysiss"""
@@ -24,7 +26,14 @@ class RunAnalysis:
         Returns
         -------
             `list of tuple`
-                each tuple will have a lenght of 5 (6 if subsamples are present), where the first element is the name of the sample, the second the list of files, the third the weight, and the fourth the index of this tuple compared to the other tuples of the same sample type, the fifth will be the isData flag (True if the sample is data, False otherwise). If subsamples are present, the sixth element will be the dict of subsamples
+                each tuple will have a lenght of 6 (7 if subsamples are present),
+                where the 1st element is the name of the sample, the 2nd the
+                list of files, the 3rd the weight, and the 4th the index of this
+                tuple compared to the other tuples of the same sample type,
+                the 5th will be the isData flag (True if the sample is data,
+                False otherwise) and the 6th the original dict in
+                samples[sampleName]. If subsamples are present,
+                the 7th element will be the dict of subsamples
         """
         # will contain all the different samples splitted based on their weights and max num. of files
         splittedSamples = []
@@ -64,7 +73,7 @@ class RunAnalysis:
                     dim = len(__files)
                 __files = [__files[j : j + dim] for j in range(0, len(__files), dim)]
                 for ___files in __files:
-                    # the weights for these files will be the product of the weight inside this sampele (i.e. samples[sampleName]['weight'])
+                    # the weights for these files will be the product of the weight inside this sample (i.e. samples[sampleName]['weight'])
                     # and the product of the special weights that is in common to all of those files (i.e. sampleType[0])
                     # the common special weight can be retrived from the first of the list of files with this weight
                     # remember that the tuple has always size 3 now, the last position is for the special weight
@@ -76,7 +85,14 @@ class RunAnalysis:
                         + " )"
                     )
                     isData = samples[sampleName].get("isData", False)
-                    sampleType = (sampleName, ___files, weight, i, isData)
+                    sampleType = (
+                        sampleName,
+                        ___files,
+                        weight,
+                        i,
+                        isData,
+                        deepcopy(samples[sampleName]),
+                    )
                     if "subsamples" in list(samples[sampleName].keys()):
                         sampleType += (samples[sampleName]["subsamples"],)
                     splittedSamples.append(sampleType)
@@ -175,14 +191,14 @@ class RunAnalysis:
         mergedCuts = {}
         for cut in list(cuts["cuts"].keys()):
             __cutExpr = ""
-            if type(cuts["cuts"][cut]) == dict:
+            if isinstance(cuts["cuts"][cut], dict):
                 __cutExpr = cuts["cuts"][cut]["expr"]
                 for cat in list(cuts["cuts"][cut]["categories"].keys()):
                     mergedCuts[cut + "_" + cat] = {"parent": cut}
                     mergedCuts[cut + "_" + cat]["expr"] = (
                         __cutExpr + " && " + cuts["cuts"][cut]["categories"][cat]
                     )
-            elif type(cuts["cuts"][cut]) == str:
+            elif isinstance(cuts["cuts"][cut], str):
                 __cutExpr = cuts["cuts"][cut]
                 mergedCuts[cut] = {"expr": __cutExpr, "parent": cut}
         self.cuts = mergedCuts
@@ -251,29 +267,22 @@ class RunAnalysis:
                     continue
                 if nuisance.get("type", "") == "shape":
                     if nuisance.get("kind", "") == "suffix":
-                        if nuisance["folderUp"] in usedFolders or nuisance["folderUp"]=="":
-                            continue
-                        usedFolders.append(nuisance["folderUp"])
+                        if nuisance.get("folderUp", "") != "":
+                            if nuisance["folderUp"] in usedFolders:
+                                continue
+                            usedFolders.append(nuisance["folderUp"])
 
-                        friendsFiles += RunAnalysis.getNuisanceFiles(nuisance, files)
-
+                            friendsFiles += RunAnalysis.getNuisanceFiles(
+                                nuisance, files
+                            )
             tnom = RunAnalysis.getTTreeNomAndFriends(files, friendsFiles)
-            
-            #### --------- FIXME : Not needed if correct jets used
-            self.inputFiles = tnom 
 
             if limit != -1:
                 df = ROOT.RDataFrame(tnom)
                 df = df.Range(limit)
             else:
-                #ROOT.EnableImplicitMT()
-                ROOT.EnableImplicitMT(1)
+                # ROOT.EnableImplicitMT()
                 df = ROOT.RDataFrame(tnom)
-
-
-            ###### FIXME
-            df = recomputeJets(self, df)
-                
             if sampleName not in self.dfs.keys():
                 self.dfs[sample[0]] = {}
             self.dfs[sampleName][sample[3]] = {
@@ -334,10 +343,7 @@ class RunAnalysis:
 
                     for line in aliases[alias].get("linesToAdd", []):
                         # RPLME_nThreads is used to set the number of threads
-                        #ROOT.gInterpreter.Declare(
-                        #    line.replace("RPLME_nThreads", str(df.GetNSlots()))
-                        #)
-                        ROOT.gROOT.ProcessLineSync(
+                        ROOT.gInterpreter.Declare(
                             line.replace("RPLME_nThreads", str(df.GetNSlots()))
                         )
 
@@ -436,7 +442,6 @@ class RunAnalysis:
         """
         Loads systematics of type ``suffix`` in the dataframes.
         """
-        print("Loading systematic suffix!!!")
         for sampleName in self.dfs.keys():
             for index in self.dfs[sampleName].keys():
                 df = self.dfs[sampleName][index]["df"]
@@ -448,21 +453,26 @@ class RunAnalysis:
                         continue
                     if nuisance.get("type", "") == "shape":
                         if nuisance.get("kind", "") == "suffix":
-
                             variation = nuisance["mapDown"]
+                            separator = nuisance.get("separator", "_")
                             variedCols = list(
                                 filter(lambda k: k.endswith(variation), columnNames)
                             )
-                            
                             if len(variedCols) == 0:
                                 print(f"No varied columns for {variation}")
                                 sys.exit()
                             baseCols = list(
                                 map(
-                                    lambda k: k[
-                                        RunAnalysis.index_sub(k, "Events.")
-                                        + len("Events.") : -len("_" + variation)
-                                    ],
+                                    lambda k: (
+                                        k[
+                                            RunAnalysis.index_sub(k, "Events.")
+                                            + len("Events.") : -len(
+                                                separator + variation
+                                            )
+                                        ]
+                                        if "Events" in k
+                                        else k[: -len(separator + variation)]
+                                    ),
                                     variedCols,
                                 )
                             )
@@ -472,26 +482,34 @@ class RunAnalysis:
                                     not in self.dfs[sampleName][index]["usedVariables"]
                                 ):
                                     # baseCol is never used -> useless to register variation
+                                    # print("unused variable", baseCol)
+                                    continue
+                                # print(baseCol in [str(k) for k in df.GetColumnNames()])
+                                if not (
+                                    baseCol in [str(k) for k in df.GetColumnNames()]
+                                ):
                                     continue
 
                                 if "bool" not in str(df.GetColumnType(baseCol)).lower():
                                     varNameDown = (
                                         baseCol
-                                        + "_"
+                                        + separator
                                         + nuisance["mapDown"]
                                         + "*"
                                         + nuisance["samples"][sampleName][1]
                                     )
                                     varNameUp = (
                                         baseCol
-                                        + "_"
+                                        + separator
                                         + nuisance["mapUp"]
                                         + "*"
                                         + nuisance["samples"][sampleName][0]
                                     )
                                 else:
-                                    varNameDown = baseCol + "_" + nuisance["mapDown"]
-                                    varNameUp = baseCol + "_" + nuisance["mapUp"]
+                                    varNameDown = (
+                                        baseCol + separator + nuisance["mapDown"]
+                                    )
+                                    varNameUp = baseCol + separator + nuisance["mapUp"]
 
                                 _type = df.GetColumnType(baseCol)
                                 expr = (
@@ -500,7 +518,6 @@ class RunAnalysis:
                                     + f"{varNameDown}, {varNameUp}"
                                     + "}"
                                 )
-                                
                                 df = df.Vary(
                                     baseCol,
                                     expr,
@@ -508,11 +525,8 @@ class RunAnalysis:
                                     variationName=nuisance["name"],
                                 )
 
-                        elif nuisance.get("kind", "") == "weight":
-                            continue
                         else:
-                            print("Unsupported nuisance")
-                            sys.exit()
+                            continue
                 self.dfs[sampleName][index]["df"] = df
 
     def loadSystematicsReweights(self):
@@ -576,11 +590,86 @@ class RunAnalysis:
                                     variationTags=["Down", "Up"],
                                     variationName=nuisance["name"],
                                 )
-                        elif nuisance.get("kind", "") == "suffix":
-                            continue
                         else:
-                            print("Unsupported nuisance")
-                            sys.exit()
+                            continue
+                self.dfs[sampleName][index]["df"] = df
+
+    def loadSystematicsReweightsEnvelopeRMS(self):
+        """
+        Loads systematics of type ``weight_envelope`` or type ``weight_rms`` in the dataframes.
+        """
+        for sampleName in self.dfs.keys():
+            for index in self.dfs[sampleName].keys():
+                df = self.dfs[sampleName][index]["df"]
+                columnNames = self.dfs[sampleName][index]["columnNames"]
+                nuisances = self.nuisances
+                # nuisance key is not used
+                for _, nuisance in list(nuisances.items()):
+                    if sampleName not in nuisance.get("samples", {sampleName: []}):
+                        continue
+                    if nuisance.get("type", "") == "shape":
+                        if (
+                            nuisance.get("kind", "") == "weight_envelope"
+                            or nuisance.get("kind", "") == "weight_rms"
+                            or nuisance.get("kind", "") == "weight_square"
+                        ):
+                            weights = nuisance["samples"].get(sampleName, None)
+                            if weights is not None:
+                                variedNames = []
+                                variedTags = []
+                                for i, weight in enumerate(weights):
+                                    if weight not in columnNames:
+                                        nuisName = f'{nuisance["name"]}_{i}'
+                                        df = df.Define(nuisName, weight)
+                                        variedNames.append(nuisName)
+                                        variedTags.append(str(i))
+                                    else:
+                                        variedNames.append(weight)
+                                        variedTags.append(str(i))
+
+                                if df.GetColumnType("weight") == "double":
+                                    expr = (
+                                        "ROOT::RVecD"
+                                        + "{ "
+                                        + ", ".join(
+                                            [
+                                                f"weight * (double) {variedName}"
+                                                for variedName in variedNames
+                                            ]
+                                        )
+                                        + "}"
+                                    )
+                                elif df.GetColumnType("weight") == "float":
+                                    expr = (
+                                        "ROOT::RVecF"
+                                        + "{ "
+                                        + ", ".join(
+                                            [
+                                                f"weight * (float) {variedName}"
+                                                for variedName in variedNames
+                                            ]
+                                        )
+                                        + "}"
+                                    )
+                                else:
+                                    print(
+                                        "Weight column has unknown type:",
+                                        df.GetColumnType("weight"),
+                                        "while varied is: ",
+                                        df.GetColumnType(variedNames[0]),
+                                    )
+                                    sys.exit()
+
+                                df = df.Vary(
+                                    "weight",
+                                    expr,
+                                    variationTags=variedTags,
+                                    variationName=nuisance["name"]
+                                    + "_SPECIAL_NUIS_"
+                                    + nuisance["kind"].split("_")[-1],
+                                )
+                        else:
+                            continue
                 self.dfs[sampleName][index]["df"] = df
 
     def loadVariables(self):
@@ -630,22 +719,32 @@ class RunAnalysis:
                 for var in list(self.variables.keys()):
                     if "tree" in self.variables[var].keys():
                         continue
+                    # variable name format is
+                    # variables["test"] = {"name": "ptll[:ptj1[:ptj2]]"}
+                    # here we iterate over the single elements of name (splitting with `:`)
+                    # for each element we will define nd_single, i.e. `test_0, test_1`
                     for i, _var in enumerate(self.variables[var]["name"].split(":")):
-                        n = var if i == 0 else var + f"_{i}"
+                        nd_single = f"{var}_{i}"
 
                         if _var not in bigColumnNames:
                             # the variable expr does not exist, create it
-                            df = df.Define(n, _var)
-                        elif n not in bigColumnNames:
+                            df = df.Define(nd_single, _var)
+                        elif nd_single not in bigColumnNames:
                             # the variable expr exists in the df, but not the variable key
                             # use alias
-                            df = df.Alias(n, _var)
-                        elif n == _var and n in bigColumnNames:
+                            df = df.Alias(nd_single, _var)
+                        elif nd_single == _var and nd_single in bigColumnNames:
                             # since the variable name and expression are equal and are already present in the df don't do anything
                             pass
                         else:
-                            # FIXME
-                            print("Error, cannot define variable")
+                            print(
+                                "Error, cannot define variable",
+                                nd_single,
+                                "for key in variables",
+                                var,
+                                "that needs",
+                                _var,
+                            )
                             sys.exit()
                 self.dfs[sampleName][index]["df"] = df
                 self.dfs[sampleName][index]["columnNames"] = list(
@@ -748,25 +847,39 @@ class RunAnalysis:
         After this method the ``dfs`` attribute will be modified to contain the subsamples names instead of the original sample name
         """
         sampleNames = set(
-            list(map(lambda k: k[0], list(filter(lambda k: len(k) == 6, self.samples))))
+            list(map(lambda k: k[0], list(filter(lambda k: len(k) == 7, self.samples))))
         )
         for sampleName in sampleNames:
+            # select in the samples list only the one with this sampleName
             _sample = list(filter(lambda k: k[0] == sampleName, self.samples))[0]
-            for subsample in list(_sample[5].keys()):
-                self.dfs[sampleName + "_" + subsample] = {}
+            for subsample in list(_sample[6].keys()):
+                # _sample[5] is the original dict, i.e. samples[sampleName]
+                flatten_samples_map = _sample[5].get(
+                    "flatten_samples_map", lambda sname, sub: "%s_%s" % (sname, sub)
+                )
+                new_subsample_name = flatten_samples_map(sampleName, subsample)
+                self.dfs[new_subsample_name] = {}
                 for index in self.dfs[sampleName].keys():
-                    self.dfs[sampleName + "_" + subsample][index] = {
-                        "parent": sampleName
-                    }
-                    self.dfs[sampleName + "_" + subsample][index]["df"] = self.dfs[
-                        sampleName
-                    ][index]["df"].Filter(_sample[5][subsample])
-                    self.dfs[sampleName + "_" + subsample][index][
-                        "columnNames"
-                    ] = self.dfs[sampleName][index]["columnNames"]
-                    self.dfs[sampleName + "_" + subsample][index]["ttree"] = self.dfs[
-                        sampleName
-                    ][index]["ttree"]
+                    self.dfs[new_subsample_name][index] = {"parent": sampleName}
+                    subsampleCut = _sample[6][subsample]
+                    subsampleWeight = "1.0"
+                    if isinstance(subsampleCut, tuple) or isinstance(
+                        subsampleCut, list
+                    ):
+                        subsampleCut = _sample[6][subsample][0]
+                        subsampleWeight = _sample[6][subsample][1]
+
+                    self.dfs[new_subsample_name][index]["df"] = (
+                        self.dfs[sampleName][index]["df"]
+                        .Filter(subsampleCut)
+                        .Redefine("weight", "weight * " + subsampleWeight)
+                    )
+                    for key in self.dfs[sampleName][index]:
+                        if key == "df":
+                            continue
+                        self.dfs[new_subsample_name][index][key] = self.dfs[sampleName][
+                            index
+                        ][key]
 
             del self.dfs[sampleName]
 
@@ -831,24 +944,28 @@ class RunAnalysis:
 
                             histRange = tuple(histRange)
 
-                            if len(vs) == 1:
-                                _h = df_cat.Histo1D(
-                                    (cut + "_" + var, "") + histRange, var, "weight"
-                                )
-                            elif len(vs) == 2:
-                                varNames = []
-                                for i, _var in enumerate(vs):
-                                    n = var if i == 0 else var + f"_{i}"
-                                    varNames.append(n)
+                            varNames = []
+                            for i, _var in enumerate(vs):
+                                nd_single = f"{var}_{i}"
+                                varNames.append(nd_single)
 
-                                _h = df_cat.Histo2D(
-                                    (cut + "_" + var, "") + histRange,
-                                    *varNames,
-                                    "weight",
-                                )
+                            histFunc = 0
+                            if len(vs) == 1:
+                                histFunc = df_cat.Histo1D
+                            elif len(vs) == 2:
+                                histFunc = df_cat.Histo2D
+                            elif len(vs) == 3:
+                                histFunc = df_cat.Histo3D
                             else:
                                 print("Unknown dimension of histo for variable", var)
                                 sys.exit()
+
+                            _h = histFunc(
+                                (cut + "_" + var, "") + histRange,
+                                *varNames,
+                                "weight",
+                            )
+
                         if sampleName not in self.results[cut][var].keys():
                             self.results[cut][var][sampleName] = {}
                         self.results[cut][var][sampleName][index] = _h
@@ -882,23 +999,39 @@ class RunAnalysis:
                             _h = 0
                             _h = _s_var[_variation]
                             fold = variables[var].get("fold", 0)
-                            if fold == 1 or fold == 3:
-                                _h.SetBinContent(
-                                    1, _h.GetBinContent(0) + _h.GetBinContent(1)
+
+                            # Rename histogram, needed to have all histograms with unique names
+                            # otherwise `RuntimeWarning: Replacing existing TH1`
+                            _name = _h.GetName()
+                            new_name = (
+                                _name
+                                + "_"
+                                + _h_name
+                                + "_"
+                                + sampleName
+                                + "_"
+                                + str(index)
+                            )
+
+                            _h.SetName(new_name)
+
+                            if _h is None:
+                                raise Exception(
+                                    "histogram is None before _postplot", _h_name
                                 )
-                                _h.SetBinContent(0, 0)
-                            if fold == 2 or fold == 3:
-                                lastBin = _h.GetNbinsX()
-                                _h.SetBinContent(
-                                    lastBin,
-                                    _h.GetBinContent(lastBin)
-                                    + _h.GetBinContent(lastBin + 1),
+
+                            _h2 = postPlot(_h, doFold=fold, unroll=True)
+
+                            if _h2 is None:
+                                print(cut, var)
+                                raise Exception(
+                                    "None histogram after _postplot", _h_name
                                 )
-                                _h.SetBinContent(lastBin + 1, 0)
-                            _histos[_h_name] = _h.Clone()
-                            # del _h
-                        # del self.results[cut][var][sampleName]['object']
-                        # replace the object with the dictionary of histos
+
+                            del _h
+                            _h = _h2
+                            _histos[_h_name] = _h
+
                         self.results[cut][var][sampleName][index] = _histos
 
     def saveResults(self):
@@ -988,22 +1121,27 @@ class RunAnalysis:
                         for hname in list(
                             self.results[cut_cat][var][sampleName][index].keys()
                         ):
+                            h = self.results[cut_cat][var][sampleName][index][hname]
                             if hname not in mergedHistos.keys():
-                                mergedHistos[hname] = self.results[cut_cat][var][
-                                    sampleName
-                                ][index][hname].Clone()
+                                if not isinstance(h, ROOT.TH1):
+                                    print(h)
+                                    raise Exception(
+                                        "Error in histogram, only save 1D histograms", h
+                                    )
+
+                                mergedHistos[hname] = h.Clone()
                             else:
-                                mergedHistos[hname].Add(
-                                    self.results[cut_cat][var][sampleName][index][hname]
-                                )
+                                mergedHistos[hname].Add(h)
 
                     for hname in mergedHistos.keys():
                         if hname == "nominal":
-                            mergedHistos[hname].SetName("histo_" + sampleName)
+                            _string = "histo_" + sampleName
+                            mergedHistos[hname].SetName(_string)
+                            mergedHistos[hname].SetTitle(_string)
                         else:
-                            mergedHistos[hname].SetName(
-                                "histo_" + sampleName + "_" + hname
-                            )
+                            _string = "histo_" + sampleName + "_" + hname
+                            mergedHistos[hname].SetName(_string)
+                            mergedHistos[hname].SetTitle(_string)
                         mergedHistos[hname].Write()
         f.Close()
 
@@ -1113,7 +1251,11 @@ class RunAnalysis:
 
         # load alias weight needed before nuisances of type weight
         self.loadAliasWeight()
+        self.splitSubsamples()
+        print("splitted samples")
+
         self.loadSystematicsReweights()
+        self.loadSystematicsReweightsEnvelopeRMS()
 
         # load all aliases remaining
         self.loadAliases(True)
@@ -1124,14 +1266,13 @@ class RunAnalysis:
                 self.dfs[sampleName][index]["df"] = self.dfs[sampleName][index][
                     "df"
                 ].Filter("(" + self.preselections + ") && abs(weight) > 0.0")
+                # ].Filter("(" + self.preselections + ")")
 
         self.loadVariables()
         self.loadBranches()
         print("loaded all variables")
         self.createResults()
         print("created empty results dict")
-        self.splitSubsamples()
-        print("splitted samples")
         self.create_cuts_vars()
         print("created cuts")
 
@@ -1181,819 +1322,6 @@ class RunAnalysis:
         self.saveResults()
 
 
-def recomputeJets(self, df):
-
-    import correctionlib
-    correctionlib.register_pyroot_binding()
-
-    ### Jet maker
-
-    ROOT.gInterpreter.Declare(
-        """
-        ROOT::RVecI sortedIndices(ROOT::RVecF variable){
-        // return sortedIndices based on variable
-        return Reverse(Argsort(variable));
-        }
-        """
-    )
-
-    
-    df = df.Define("isMyCleanJet", "ROOT::RVecB(Jet_pt.size(), true)")
-
-    df = df.Define("MyCleanJet_pt", "Jet_pt[isMyCleanJet]")
-    df = df.Define("MyCleanJet_sorting", "sortedIndices(MyCleanJet_pt)")
-
-    df = df.Define("MyCleanJet_jetIdx", "ROOT::VecOps::Range(nJet)[isMyCleanJet]")
-    df = df.Redefine("MyCleanJet_jetIdx", "Take(MyCleanJet_jetIdx, MyCleanJet_sorting)")
-    CleanJet_var = ["eta", "phi", "mass"]
-    for prop in CleanJet_var:
-        df = df.Define(f"MyCleanJet_{prop}", f"Jet_{prop}[isMyCleanJet]")
-        df = df.Redefine(
-            f"MyCleanJet_{prop}", f"Take(MyCleanJet_{prop}, MyCleanJet_sorting)"
-        )
-
-
-    ## LeptonSel
-
-
-    ROOT.gInterpreter.Declare(
-        """
-        using namespace ROOT;
-        using namespace ROOT::VecOps;
-        
-        ROOT::RVecB reduce_cond_any(ROOT::RVecB condition, uint size1, uint size2){
-            ROOT::RVecB r;
-            for (uint i = 0; i < size1; i++){
-                bool c = false;
-                for (uint j = 0; j < size2; j++){
-                    if (condition[i * size2 + j]){
-                        c = true;
-                        break;
-                    }
-                }
-                r.push_back(c);
-            }
-            return r;
-        }
-
-        RVecB propagateMask(RVecI Lepton_origIdx, RVecB mask, bool defaultValue){
-        RVecB r {};
-
-            for (uint i = 0; i < Lepton_origIdx.size(); i++){
-                if (Lepton_origIdx[i] < 0){
-                    r.push_back(defaultValue);
-                } else {
-                    r.push_back(mask[Lepton_origIdx[i]]);
-                }
-            }
-            assert (Lepton_origIdx.size() == r.size());
-            return r;
-        /*
-        does not work, why?
-        RVecB r(Lepton_origIdx.size(), defaultValue);
-        r[Lepton_origIdx >= 0] = Take(mask, Lepton_origIdx[Lepton_origIdx >= 0]);
-        return r;
-        */
-        }
-        """
-    )
-    
-    df = df.Define(
-            "LeptonMask_JC",
-            "Lepton_pt >= 10",
-    )
-    df = df.Define("MyCleanJetMask", "MyCleanJet_eta <= 5.0")
-    
-    df = df.Define(
-        "MyCleanJet_Lepton_comb",
-        "ROOT::VecOps::Combinations(MyCleanJet_pt[MyCleanJetMask].size(), Lepton_pt[LeptonMask_JC].size())",
-    )
-        
-    df = df.Define(
-        "dR2",
-        "ROOT::VecOps::DeltaR2( \
-        Take(MyCleanJet_eta, MyCleanJet_Lepton_comb[0]), \
-        Take(Lepton_eta, MyCleanJet_Lepton_comb[1]), \
-        Take(MyCleanJet_phi, MyCleanJet_Lepton_comb[0]), \
-        Take(Lepton_phi, MyCleanJet_Lepton_comb[1]) \
-        )",
-    )
-        
-    df = df.Define(
-        "MyCleanJet_pass",
-        "! reduce_cond_any(dR2<(0.3*0.3), MyCleanJet_pt[MyCleanJetMask].size(), Lepton_pt[LeptonMask_JC].size())",
-    )
-    
-    branches = ["jetIdx", "pt", "eta", "phi", "mass"]
-
-    for prop in branches:
-        df = df.Redefine(
-            f"MyCleanJet_{prop}", f"MyCleanJet_{prop}[MyCleanJetMask][MyCleanJet_pass]"
-        )
-
-    
-    #### JetSel
-
-    df = df.Redefine(
-        "MyCleanJetMask",
-        "MyCleanJet_pt >= 15.0 && MyCleanJet_eta <= 4.7 && Take(Jet_jetId, MyCleanJet_jetIdx) >= 2",
-    )
-
-    
-    print(self.samples[0][1][0])
-    isData = False
-    isEE = False
-    if "Run2022EE" in self.samples[0][1][0]:
-        isData = True
-        isEE = True
-        pathToJson = "/afs/cern.ch/work/s/sblancof/private/Run3Analysis/mkShapesRDF/mkShapesRDF/processor/data/jetvetomaps/Run2022EE/jetvetomaps.json"
-        globalTag = "Summer22EE_23Sep2023_RunEFG_V1"
-
-    elif "Run2022_" in self.samples[0][1][0]:
-        isData = True
-        pathToJson = "/afs/cern.ch/work/s/sblancof/private/Run3Analysis/mkShapesRDF/mkShapesRDF/processor/data/jetvetomaps/Run2022/jetvetomaps.json"
-        globalTag = "Summer22_23Sep2023_RunCD_V1"
-        
-    elif "Summer22EE" in self.samples[0][1][0]:
-        isEE = True
-        pathToJson = "/afs/cern.ch/work/s/sblancof/private/Run3Analysis/mkShapesRDF/mkShapesRDF/processor/data/jetvetomaps/Run2022EE/jetvetomaps.json"
-        globalTag = "Summer22EE_23Sep2023_RunEFG_V1"
-
-        JEC_era = "Summer22EE_22Sep2023_V2_MC"
-        JER_era = "Summer22EEPrompt22_JRV1_MC"
-        jet_object = "AK4PFPuppi"
-        met_collections = ["PuppiMET", "MET", "RawMET"]
-                
-    else:
-        pathToJson = "/afs/cern.ch/work/s/sblancof/private/Run3Analysis/mkShapesRDF/mkShapesRDF/processor/data/jetvetomaps/Run2022/jetvetomaps.json"
-        globalTag = "Summer22_23Sep2023_RunCD_V1"
-
-        JEC_era = "Summer22_22Sep2023_V2_MC"
-        JER_era = "JR_Winter22Run3_V1_MC"
-        jet_object = "AK4PFPuppi"
-        met_collections = ["PuppiMET", "MET", "RawMET"]
-        
-
-    ROOT.gROOT.ProcessLine(
-        f"""
-        auto jetMaskFile = correction::CorrectionSet::from_file("{pathToJson}");
-        correction::Correction::Ref cset_jet_Map = (correction::Correction::Ref) jetMaskFile->at("{globalTag}");
-        """
-    )
-
-
-    ROOT.gInterpreter.Declare(
-        """
-        ROOT::RVecB getJetMask(ROOT::RVecF CleanJet_pt,ROOT::RVecF CleanJet_eta, ROOT::RVecF CleanJet_phi, ROOT::RVecF Jet_neEmEF,ROOT::RVecF Jet_chEmEF,ROOT::RVecI CleanJet_jetIdx){
-            float tmp_value;
-            float cleanJet_EM;
-            float eta, phi;
-            RVecB CleanJet_isNotVeto = RVecB(CleanJet_pt.size(), true);
-            for (int i=0; i<CleanJet_pt.size(); i++){
-                    phi = ROOT::VecOps::Max(ROOT::RVecF{ROOT::VecOps::Min(ROOT::RVecF{CleanJet_phi[i], 3.1415}), -3.1415});
-                    eta = ROOT::VecOps::Max(ROOT::RVecF{ROOT::VecOps::Min(ROOT::RVecF{CleanJet_eta[i], 5.19}), -5.19});
-                    
-                    cleanJet_EM = Jet_neEmEF[CleanJet_jetIdx[i]] + Jet_chEmEF[CleanJet_jetIdx[i]];
-                    tmp_value = cset_jet_Map->evaluate({"jetvetomap", eta, phi});
-                    
-                    if (cleanJet_EM<0.9 && CleanJet_pt[i]>15.0 && tmp_value!=0.0){
-                            CleanJet_isNotVeto[i] = false;
-                    }
-            }
-            return CleanJet_isNotVeto;
-        }
-        """
-    )
-
-    if isEE:
-        ROOT.gInterpreter.Declare(
-            """
-            bool getEventMask(ROOT::RVecF CleanJet_pt,ROOT::RVecF CleanJet_eta, ROOT::RVecF CleanJet_phi, ROOT::RVecF Jet_neEmEF,ROOT::RVecF Jet_chEmEF,ROOT::RVecI CleanJet_jetIdx){
-                float tmp_value;
-                float cleanJet_EM;
-                float eta,phi;
-                for (int i=0; i<CleanJet_pt.size(); i++){
-                        phi = ROOT::VecOps::Max(ROOT::RVecF{ROOT::VecOps::Min(ROOT::RVecF{CleanJet_phi[i], 3.1415}), -3.1415});
-                        eta = ROOT::VecOps::Max(ROOT::RVecF{ROOT::VecOps::Min(ROOT::RVecF{CleanJet_eta[i], 5.19}), -5.19});
-                        
-                        cleanJet_EM = Jet_neEmEF[CleanJet_jetIdx[i]] + Jet_chEmEF[CleanJet_jetIdx[i]];
-                        tmp_value = cset_jet_Map->evaluate({"jetvetomap_eep", eta, phi});
-                        if (cleanJet_EM<0.9 && CleanJet_pt[i]>15.0 && tmp_value!=0.0){
-                                return false;
-                        }
-                }
-                return true;
-            }
-            """
-        )
-        
-    df = df.Redefine(
-        "MyCleanJetMask",
-        "MyCleanJetMask && getJetMask(MyCleanJet_pt,MyCleanJet_eta,MyCleanJet_phi,Jet_neEmEF,Jet_chEmEF,MyCleanJet_jetIdx)"
-    )
-
-    
-    if isEE:
-        df = df.Define(
-            "MyCleanEventMask",
-            "getEventMask(MyCleanJet_pt,MyCleanJet_eta,MyCleanJet_phi,Jet_neEmEF,Jet_chEmEF,MyCleanJet_jetIdx)"
-        )
-        
-        df = df.Filter("MyCleanEventMask")
-
-    
-    branches = ["jetIdx", "pt", "eta", "phi", "mass"]
-    for prop in branches:
-        df = df.Redefine(f"MyCleanJet_{prop}", f"MyCleanJet_{prop}[MyCleanJetMask]")
-
-
-    if isData:
-        return df
-
-
-
-    ### CMSJMECalculator
-
-    from CMSJMECalculators.jetdatabasecache import JetDatabaseCache
-    jecDBCache = JetDatabaseCache("JECDatabase", repository="cms-jet/JECDatabase")
-    jrDBCache = JetDatabaseCache("JRDatabase", repository="cms-jet/JRDatabase")
-
-    txtL1JEC = jecDBCache.getPayload(JEC_era, "L1FastJet", jet_object)
-
-    txtJECs = []
-    txtJECs.append(txtL1JEC)
-    txtJECs.append(jecDBCache.getPayload(JEC_era, "L2Relative", jet_object))
-    txtJECs.append(jecDBCache.getPayload(JEC_era, "L3Absolute", jet_object))
-    txtJECs.append(jecDBCache.getPayload(JEC_era, "L2L3Residual", jet_object))
-
-    txtUnc = jecDBCache.getPayload(
-        JEC_era, "UncertaintySources", jet_object, ""
-    )
-
-    txtPtRes = jrDBCache.getPayload(JER_era, "PtResolution", jet_object)
-    txtSF = jrDBCache.getPayload(JER_era, "SF", jet_object)
-    print("Path for SF:", txtSF)
-
-    from CMSJMECalculators import loadJMESystematicsCalculators
-
-    loadJMESystematicsCalculators()
-
-    
-    ### MET
-    
-    MET = "PuppiMET"
-    ROOT.gInterpreter.ProcessLine(
-        f"Type1METVariationsCalculator my{MET}" + "VarCalc{}"
-    )
-    calcMET = getattr(ROOT, f"my{MET}VarCalc")
-    calcMET.setUnclusteredEnergyTreshold(15.0)
-    # redo JEC, push_back corrector parameters for different levels
-    jecParams = getattr(ROOT, "std::vector<JetCorrectorParameters>")()
-    for txtJEC in txtJECs:
-        jecParams.push_back(ROOT.JetCorrectorParameters(txtJEC))
-    calcMET.setJEC(jecParams)
-    
-    jecL1Params = getattr(ROOT, "std::vector<JetCorrectorParameters>")()
-    jecL1Params.push_back(ROOT.JetCorrectorParameters(txtL1JEC))
-    calcMET.setL1JEC(jecL1Params)
-    # calculate JES uncertainties (repeat for all sources)
-    
-    with open(txtUnc) as f:
-        lines = f.read().split("\n")
-        sources = [
-            x for x in lines if x.startswith("[") and x.endswith("]")
-        ]
-        sources = [x[1:-1] for x in sources]
-
-    for s in sources:
-        jcp_unc = ROOT.JetCorrectorParameters(txtUnc, s)
-        calcMET.addJESUncertainty(s, jcp_unc)
-
-    # Smear jets, with JER uncertainty
-    calcMET.setSmearing(
-        txtPtRes,
-        txtSF,
-        True,
-        False,
-        -1.0,
-        -1.0,  # decorrelate for different regions
-    )  # use hybrid recipe, matching parameters
-    calcMET.setIsT1SmearedMET(True)
-    
-    jesSources = calcMET.available()
-    print("DEBUG module")
-    skip = 1
-    skip += 6 * 2
-    # first are JERs, last two are unclustered unc.
-    jesSources = jesSources[skip:-2][::2]
-    jesSources = list(map(lambda k: str(k)[3:-2], jesSources))
-    # jesSources = sorted(jesSources)
-    jesSources = list(map(lambda k: "JES" + k, jesSources))
-    #print(jesSources)
-    
-    # list of columns to be passed to myJetVarCal produce
-    cols = []
-    
-    JetColl = "newJet3"
-    
-    df = df.Define("newJet3_pt", "MyCleanJet_pt")
-    df = df.Define("newJet3_eta", "MyCleanJet_eta")
-    df = df.Define("newJet3_phi", "MyCleanJet_phi")
-    df = df.Define("newJet3_jetIdx", "MyCleanJet_jetIdx")
-    
-    cols.append(f"{JetColl}_pt")
-    cols.append(f"{JetColl}_eta")
-    cols.append(f"{JetColl}_phi")
-    cols.append(f"Take(Jet_mass, {JetColl}_jetIdx)")
-    cols.append(f"Take(Jet_rawFactor, {JetColl}_jetIdx)")
-    cols.append(f"Take(Jet_area, {JetColl}_jetIdx)")
-    cols.append(f"Take(Jet_muonSubtrFactor, {JetColl}_jetIdx)")
-    cols.append(f"Take(Jet_neEmEF, {JetColl}_jetIdx)")
-    cols.append(f"Take(Jet_chEmEF, {JetColl}_jetIdx)")
-    cols.append(f"Take(Jet_jetId, {JetColl}_jetIdx)")
-    
-    # rho
-    cols.append("Rho_fixedGridRhoFastjetAll")
-    
-    cols.append(f"Take(Jet_partonFlavour, {JetColl}_jetIdx)")
-    # seed
-    cols.append(
-        f"(run<<20) + (luminosityBlock<<10) + event + 1 + int({JetColl}_eta.size()>0 ? {JetColl}_eta[0]/.01 : 0)"
-    )
-    
-    # gen jet coll
-    cols.append("GenJet_pt")
-    cols.append("GenJet_eta")
-    cols.append("GenJet_phi")
-    cols.append("GenJet_mass")
-    
-    RawMET = "RawMET" if "Puppi" not in MET else "RawPuppiMET"
-    #RawMET = MET
-    cols.append(f"{RawMET}_phi")
-    cols.append(f"{RawMET}_pt")
-    
-    cols.append("MET_MetUnclustEnUpDeltaX")
-    cols.append("MET_MetUnclustEnUpDeltaY")
-    
-    df = df.Redefine('EmptyLowPtJet', 'ROOT::RVecF{}')
-    #for _ in range(5):
-    #    cols.append('EmptyLowPtJet')
-    cols.append("CorrT1METJet_rawPt")
-    cols.append("CorrT1METJet_eta")
-    cols.append("CorrT1METJet_phi")
-    cols.append("CorrT1METJet_area")
-    cols.append("CorrT1METJet_muonSubtrFactor")
-    cols.append("ROOT::RVecF {}")
-    cols.append("ROOT::RVecF {}")
-    
-    df = df.Define(
-        f"{MET}Vars", f"my{MET}VarCalc.produce({', '.join(cols)})"
-    )
-    
-    df = df.Redefine(f"{MET}_pt", f"{MET}Vars.pt(0)")
-    df = df.Redefine(f"{MET}_phi", f"{MET}Vars.phi(0)")
-
-    _sources = []        
-    _sources = [f"JER_{i}" for i in range(6)]
-    _sources += jesSources
-    sources = _sources.copy()
-    METsources = _sources.copy()
-    METsources += ["MET"]  # last one is the unclustered variation
-
-    #print("\n")
-    #print("MET uncertainties: ")
-    #print(METsources)
-
-    for variable in [MET + "_pt", MET + "_phi"]:
-        for i, source in enumerate(METsources):
-            up = f"{MET}Vars.{variable.split('_')[-1]}({2*i+1})"
-            do = f"{MET}Vars.{variable.split('_')[-1]}({2*i+1+1})"
-            
-            df = df.Define(
-                variable + f"_{source}up",
-                up
-            )
-            df = df.Define(
-                variable + f"_{source}do",
-                do
-            )
-                
-            #df = df.Vary(
-            #    variable,
-            #    "ROOT::RVecD{" + up + ", " + do + "}",
-            #    ["up", "do"],
-            #    source,
-            #)
-    
-    ### JER
-       
-    ROOT.gInterpreter.ProcessLine("JetVariationsCalculator myJetVarCalc{}")
-    calc = getattr(ROOT, "myJetVarCalc")
-
-    jecParams = getattr(ROOT, "std::vector<JetCorrectorParameters>")()
-    for txtJEC in txtJECs:
-        jecParams.push_back(ROOT.JetCorrectorParameters(txtJEC))
-    calc.setJEC(jecParams)
-    # calculate JES uncertainties (repeat for all sources)
-    
-    with open(txtUnc) as f:
-        lines = f.read().split("\n")
-        sources = [x for x in lines if x.startswith("[") and x.endswith("]")]
-        sources = [x[1:-1] for x in sources]
-        
-    for s in sources:
-        jcp_unc = ROOT.JetCorrectorParameters(txtUnc, s)
-        calc.addJESUncertainty(s, jcp_unc)
-    
-    calc.setSmearing(
-        txtPtRes,
-        txtSF,
-        True,
-        False,
-        -1.0,
-        -1.0,
-    )
-    jesSources = calc.available()
-    skip = 1
-    skip += 6 * 2
-    jesSources = jesSources[skip:][::2]
-    jesSources = list(map(lambda k: str(k)[3:-2], jesSources))
-    jesSources = list(map(lambda k: "JES" + k, jesSources))
-    
-    # list of columns to be passed to myJetVarCal produce
-    cols = []
-
-    # nre reco jet coll
-    JetColl = "newJet2"
-    
-    df = df.Define(f"{JetColl}_pt", "MyCleanJet_pt")
-    df = df.Define(f"{JetColl}_eta", "MyCleanJet_eta")
-    df = df.Define(f"{JetColl}_phi", "MyCleanJet_phi")
-    df = df.Define(f"{JetColl}_jetIdx", "MyCleanJet_jetIdx")
-
-    cols.append(f"{JetColl}_pt")
-    cols.append(f"{JetColl}_eta")
-    cols.append(f"{JetColl}_phi")
-    cols.append("MyCleanJet_mass")
-    cols.append(f"Take(Jet_rawFactor, {JetColl}_jetIdx)")
-    cols.append(f"Take(Jet_area, {JetColl}_jetIdx)")
-    cols.append(f"Take(Jet_jetId, {JetColl}_jetIdx)")
-    
-    # rho
-    cols.append("Rho_fixedGridRhoFastjetAll")
-    
-    cols.append(f"Take(Jet_partonFlavour, {JetColl}_jetIdx)")
-    
-    # seed
-    cols.append(
-        f"(run<<20) + (luminosityBlock<<10) + event + 1 + int({JetColl}_eta.size()>0 ? {JetColl}_eta[0]/.01 : 0)"
-    )
-
-    # gen jet coll
-    cols.append("GenJet_pt")
-    cols.append("GenJet_eta")
-    cols.append("GenJet_phi")
-    cols.append("GenJet_mass")
-    
-    df = df.Define("jetVars", f'myJetVarCalc.produce({", ".join(cols)})')
-
-    df = df.Redefine("MyCleanJet_pt", "jetVars.pt(0)")
-    df = df.Redefine("MyCleanJet_mass", "jetVars.mass(0)")
-    
-    df = df.Redefine(
-        "MyCleanJet_sorting",
-        "ROOT::VecOps::Reverse(ROOT::VecOps::Argsort(MyCleanJet_pt))",
-    )
-    
-    df = df.Redefine("MyCleanJet_pt", "Take( MyCleanJet_pt, MyCleanJet_sorting)")
-    df = df.Redefine("MyCleanJet_eta", "Take( MyCleanJet_eta, MyCleanJet_sorting)")
-    df = df.Redefine("MyCleanJet_phi", "Take( MyCleanJet_phi, MyCleanJet_sorting)")
-    df = df.Redefine("MyCleanJet_mass", "Take( MyCleanJet_mass, MyCleanJet_sorting)")
-    df = df.Redefine("MyCleanJet_jetIdx", "Take( MyCleanJet_jetIdx, MyCleanJet_sorting)")    
-
-    _sources = []
-    _sources = [f"JER_{i}" for i in range(6)]
-    _sources += jesSources
-    sources = _sources.copy()
-
-    #print("\n")
-    #print("JES uncertainties: ")
-    #print(sources)
-    
-    for i, source in enumerate(sources):
-        
-        variations_pt = []
-        variations_jetIdx = []
-        variations_mass = []
-        variations_phi = []
-        variations_eta = []
-        for j, tag in enumerate(["up", "down"]):
-            variation_pt = f"jetVars.pt({2*i+1+j})"
-            variation_mass = f"jetVars.mass({2*i+1+j})"
-            df = df.Define(
-                f"tmp_CleanJet_pt__JES_{source}_{tag}",
-                variation_pt,
-            )
-            df = df.Define(
-                f"tmp_CleanJet_pt__JES_{source}_{tag}_sorting",
-                f"ROOT::VecOps::Reverse(ROOT::VecOps::Argsort(tmp_CleanJet_pt__JES_{source}_{tag}))",
-            )
-            variations_pt.append(
-                f"Take(tmp_CleanJet_pt__JES_{source}_{tag}, tmp_CleanJet_pt__JES_{source}_{tag}_sorting)"
-            )
-            
-            df = df.Define(
-                f"MyCleanJet_cleanJetIdx_preJES_{source}_{tag}",
-                f"tmp_CleanJet_pt__JES_{source}_{tag}_sorting",
-            )
-            
-            variations_jetIdx.append(
-                f"Take({JetColl}_jetIdx, tmp_CleanJet_pt__JES_{source}_{tag}_sorting)",
-            )
-            
-            df = df.Define(
-                f"tmp_CleanJet_mass__JES_{source}_{tag}",
-                f"Take({variation_mass}, tmp_CleanJet_pt__JES_{source}_{tag}_sorting)",
-            )
-            variations_mass.append(f"tmp_CleanJet_mass__JES_{source}_{tag}")
-            
-            variations_phi.append(
-                f"Take({JetColl}_phi, tmp_CleanJet_pt__JES_{source}_{tag}_sorting)"
-            )
-            variations_eta.append(
-                f"Take({JetColl}_eta, tmp_CleanJet_pt__JES_{source}_{tag}_sorting)"
-            )
-
-            
-        tags = ["up", "do"]
-        
-        df = df.Define(
-            f"MyCleanJet_pt_{source}up",
-            variations_pt[0]
-        )
-        df = df.Define(
-	    f"MyCleanJet_pt_{source}do",
-            variations_pt[1]
-	)    
-
-        df = df.Define(
-            f"MyCleanJet_eta_{source}up",
-            variations_eta[0]
-        )
-        df = df.Define(
-            f"MyCleanJet_eta_{source}do",
-            variations_eta[1]
-        )
-
-        df = df.Define(
-            f"MyCleanJet_phi_{source}up",
-            variations_phi[0]
-        )
-        df = df.Define(
-            f"MyCleanJet_phi_{source}do",
-            variations_phi[1]
-        )
-
-        df = df.Define(
-            f"MyCleanJet_jetIdx_{source}up",
-            variations_jetIdx[0]
-        )
-        df = df.Define(
-            f"MyCleanJet_jetIdx_{source}do",
-            variations_jetIdx[1]
-        )
-
-        df = df.Define(
-            f"MyCleanJet_mass_{source}up",
-            variations_mass[0]
-        )
-        df = df.Define(
-            f"MyCleanJet_mass_{source}do",
-            variations_mass[1]
-        )
-
-        '''
-        df = df.Vary(
-            "MyCleanJet_pt",
-            "ROOT::RVec<ROOT::RVecF>{"
-            + variations_pt[0]
-            + ", "
-            + variations_pt[1]
-            + "}",
-            tags,
-            source,
-        )
-        
-        df = df.Vary(
-            "MyCleanJet_jetIdx",
-            "ROOT::RVec<ROOT::RVecI>{" + variations_jetIdx[0]
-            # + "CleanJet_jetIdx"
-            + ", " + variations_jetIdx[1]
-            # + "CleanJet_jetIdx"
-            + "}",
-            tags,
-            source,
-        )
-        
-        df = df.Vary(
-            "MyCleanJet_mass",
-            "ROOT::RVec<ROOT::RVecF>{" + variations_mass[0]
-            # + "CleanJet_mass"
-            + ", " + variations_mass[1]
-            # + "CleanJet_mass"
-            + "}",
-            tags,
-            source,
-        )
-        
-        df = df.Vary(
-            "MyCleanJet_phi",
-            "ROOT::RVec<ROOT::RVecF>{" + variations_phi[0]
-            # + "CleanJet_phi"
-            + ", " + variations_phi[1]
-            # + "CleanJet_phi"
-            + "}",
-            tags,
-            source,
-        )
-        
-        df = df.Vary(
-            "MyCleanJet_eta",
-            "ROOT::RVec<ROOT::RVecF>{" + variations_eta[0]
-            # + "CleanJet_eta"
-            + ", " + variations_eta[1]
-            # + "CleanJet_eta"
-            + "}",
-            tags,
-            source,
-        )
-        '''
-        
-    if isEE:
-        era = 2022
-        algo = "deepJet"
-        selectedWPs = ["shape"]
-        jesSystsForShape = ["jes","jesAbsoluteStat","jesAbsoluteScale","jesAbsoluteMPFBias","jesFragmentation","jesSinglePionECAL","jesSinglePionHCAL","jesFlavorQCD",
-                            "jesRelativeJEREC1","jesRelativeJEREC2","jesRelativeJERHF","jesRelativePtBB","jesRelativePtEC1","jesRelativePtEC2","jesRelativePtHF","jesRelativeBal",
-                            "jesRelativeSample","jesRelativeFSR","jesRelativeStatFSR","jesRelativeStatEC","jesRelativeStatHF","jesPileUpDataMC","jesPileUpPtRef","jesPileUpPtBB",
-                            "jesPileUpPtEC1","jesPileUpPtEC2","jesPileUpPtHF"]
-
-        mode = "shape"
-        pathToJson = "/afs/cern.ch/work/s/sblancof/private/Run3Analysis/mkShapesRDF/examples/polarization/btagging_Summer22EE.json"
-
-    else:
-
-        era = 2022
-        algo = "deepJet"
-        selectedWPs = ["shape"]
-        jesSystsForShape = ["jes","jesAbsoluteStat","jesAbsoluteScale","jesAbsoluteMPFBias","jesFragmentation","jesSinglePionECAL","jesSinglePionHCAL","jesFlavorQCD",
-                            "jesRelativeJEREC1","jesRelativeJEREC2","jesRelativeJERHF","jesRelativePtBB","jesRelativePtEC1","jesRelativePtEC2","jesRelativePtHF","jesRelativeBal",
-                            "jesRelativeSample","jesRelativeFSR","jesRelativeStatFSR","jesRelativeStatEC","jesRelativeStatHF","jesPileUpDataMC","jesPileUpPtRef","jesPileUpPtBB",
-                            "jesPileUpPtEC1","jesPileUpPtEC2","jesPileUpPtHF"]
-
-        mode = "shape"
-        pathToJson = "/afs/cern.ch/work/s/sblancof/private/Run3Analysis/mkShapesRDF/examples/polarization/btagging_Summer22.json"
-
-
-
-
-    max_abs_eta = """2.49999"""
-    min_pt = """20.0001"""
-
-    branch_algo = {"deepJet": "Jet_btagDeepFlavB", "particleNet": "Jet_btagPNetB", "robustParticleTransformer": "Jet_btagRobustParTAK4B"}
-    branch_sfalgo = {"deepJet": "deepjet", "particleNet": "partNet", "robustParticleTransformer": "partTransformer"}
-    
-    branch_name = branch_algo[algo]
-    branch_sfname = branch_sfalgo[algo]
-
-
-    systs = []
-    systs.append("up")
-    systs.append("down")
-    central_and_systs = ["central"]
-    central_and_systs.extend(systs)
-    
-    systs_shape_corr = []
-    for syst in [
-            "lf",
-            "hf",
-            "hfstats1",
-            "hfstats2",
-            "lfstats1",
-            "lfstats2",
-            "cferr1",
-            "cferr2"] + jesSystsForShape:
-        systs_shape_corr.append("up_%s" % syst)
-        systs_shape_corr.append("down_%s" % syst)
-        central_and_systs_shape_corr = ["central"]
-        central_and_systs_shape_corr.extend(systs_shape_corr)
-
-    shape_syst = [
-            "lf",
-            "hf",
-            "hfstats1",
-            "hfstats2",
-            "lfstats1",
-            "lfstats2",
-            "cferr1",
-            "cferr2",
-        ] + jesSystsForShape
-
-
-    cset_btag_name = f"cset_btag_{era}_{mode}_{algo}"
-    cset_btag_sf_name = f"cset_btag_sf_{era}_{mode}_{algo}"
-
-    inputFileName = pathToJson
-    
-    if not hasattr(ROOT, cset_btag_name):
-        # check if cset_btag is already defined
-        
-        ROOT.gROOT.ProcessLine(
-            f"""
-            auto {cset_btag_name} = correction::CorrectionSet::from_file("{inputFileName}");
-            """
-        )
-        
-    ### Load the correction given algo and mode  # noqa: E266
-    if not hasattr(ROOT, cset_btag_sf_name):
-        # check if cset_btag_sf is already defined
-        s = f"""
-        correction::Correction::Ref {cset_btag_sf_name} = (correction::Correction::Ref) {cset_btag_name}->at("{algo}_{mode}");
-        """
-    else:
-        # if already defined store the new cset_btag_sf
-        s = f"""
-        {cset_btag_sf_name} = (correction::Correction::Ref) {cset_btag_name}->at("{algo}_{mode}");
-        """
-
-
-    ROOT.gROOT.ProcessLine(s)
-
-    suffix = f"{mode}_{algo}"
-    getbtagSF_shape_name = f"getbtagSF_shape_{suffix}"
-    getbtagSF_wp_name = f"getbtagSF_wp_name_{suffix}"
-
-    if mode == "shape":
-        if not hasattr(ROOT, getbtagSF_shape_name):
-            ROOT.gInterpreter.Declare(
-                "ROOT::RVecF "
-                + getbtagSF_shape_name
-                + """
-                (std::string syst, ROOT::RVecI flav, ROOT::RVecF eta, ROOT::RVecF pt, ROOT::RVecF btag){
-                ROOT::RVecF sf(pt.size(), 1.0);
-                
-                for (unsigned int i = 0, n = pt.size(); i < n; ++i) {
-                if (pt[i]<"""
-                + min_pt
-                + """ || abs(eta[i])>"""
-                + max_abs_eta
-                + """ || btag[i]<0.0 || isnan(btag[i]) || btag[i]>19.999){continue;}
-                if (syst.find("jes") != std::string::npos && flav[i]!=0){continue;}
-                if (syst.find("cferr") != std::string::npos){
-                if (flav[i]==4){
-                auto sf_tmp = """+cset_btag_sf_name+"""->evaluate({syst, abs(flav[i]), abs(eta[i]), pt[i], btag[i]});
-                sf[i] = float(sf_tmp);
-                }else{
-                continue;
-                }
-                }else if (syst.find("hf") != std::string::npos || syst.find("lf") != std::string::npos){
-                if (flav[i]==4){
-                continue;
-                }else{
-                auto sf_tmp = """+cset_btag_sf_name+"""->evaluate({syst, abs(flav[i]), abs(eta[i]), pt[i], btag[i]});
-                sf[i] = float(sf_tmp);
-                }
-                }else{
-                auto sf_tmp = """+cset_btag_sf_name+"""->evaluate({syst, abs(flav[i]), abs(eta[i]), pt[i], btag[i]});
-                sf[i] = float(sf_tmp);
-                }
-                }
-                return sf;
-                }
-                """
-            )
-
-        for central_or_syst in central_and_systs_shape_corr:
-            if central_or_syst == "central":
-                df = df.Redefine(
-                    f"Jet_btagSF_{branch_sfname}_shape",
-                    f'{getbtagSF_shape_name}("{central_or_syst}", Jet_hadronFlavour, Jet_eta, Jet_pt, {branch_name})',
-                )
-            else:
-                df = df.Redefine(
-                    f"Jet_btagSF_{branch_sfname}_shape_{central_or_syst}",
-                    f'{getbtagSF_shape_name}("{central_or_syst}", Jet_hadronFlavour, Jet_eta, Jet_pt, {branch_name})',
-                )
-
-                
-
-
-
-
-
-    
-    return df
-    
 if __name__ == "__main__":
     ROOT.gInterpreter.Declare('#include "headers.hh"')
     exec(open("script.py").read())

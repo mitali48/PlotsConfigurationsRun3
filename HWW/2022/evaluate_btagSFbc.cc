@@ -86,7 +86,7 @@ class btagSFbc {
 };
 
 btagSFbc::btagSFbc(TString eff_map) {
-  cset = CorrectionSet::from_file("/afs/cern.ch/user/s/squinto/mkShapesRDF/mkShapesRDF/processor/data/jsonpog-integration/POG/BTV/2022_Summer22/btagging.json.gz");
+  cset = CorrectionSet::from_file("/afs/cern.ch/user/m/misharma//afs/cern.ch/user/m/misharma/private/Latinos/HWWRUn3/mkShapesRDF/mkShapesRDF/processor/data/jsonpog-integration/POG/BTV/2022_Summer22/btagging.json");
  
   TFile *reff = TFile::Open(eff_map, "READ");
   h_bjet_eff  = (TH2F*)reff->Get("bjet_eff")->Clone();

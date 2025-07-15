@@ -170,6 +170,7 @@ bSF   = btagging_SFs[bAlgo]
 
 #btv_path = "/afs/cern.ch/user/s/squinto/mkShapesRDF/mkShapesRDF/processor/data/jsonpog-integration/POG/BTV/2022_Summer22"
 
+'''
 for flavour in ['bc', 'light']:
     for shift in ['central', 'up_uncorrelated', 'down_uncorrelated', 'up_correlated', 'down_correlated']:
         btagsf = 'btagSF' + flavour
@@ -181,7 +182,7 @@ for flavour in ['bc', 'light']:
             'expr': f'btagSF{flavour}_{shift}(CleanJet_pt, CleanJet_eta, CleanJet_jetIdx, nCleanJet, Jet_hadronFlavour, Jet_btagDeepFlavB, "L", "{shift}")',
             'samples' : mc,
         }
-
+'''
 # B tagging selections and scale factors
 aliases['bVeto'] = {
     'expr': f'Sum(CleanJet_pt > 20. && abs(CleanJet_eta) < 2.5 && Take(Jet_btag{bAlgo}, CleanJet_jetIdx) > {bWP}) == 0'
@@ -255,8 +256,8 @@ for shift in ['jes','lf','hf','lfstats1','lfstats2','hfstats1','hfstats2','cferr
 
 # Use this for the usual SF
 aliases['SFweight'] = {
-    'expr': ' * '.join(['SFweight2l', 'LepWPCut', 'LepWPSF', 'btagSFbc', 'btagSFlight']),
-    #'expr': ' * '.join(['SFweight2l', 'LepWPCut', 'LepWPSF','btagSF']),
+    #'expr': ' * '.join(['SFweight2l', 'LepWPCut', 'LepWPSF', 'btagSFbc', 'btagSFlight']),
+    'expr': ' * '.join(['SFweight2l', 'LepWPCut', 'LepWPSF','btagSF']),
     'samples': mc
 }
 

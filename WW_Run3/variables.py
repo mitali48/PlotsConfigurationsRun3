@@ -8,7 +8,7 @@ variables = {}
 #                      }
 
 
-
+'''
 variables['RandomForest']  = {
     'name': 'RandomForest_evaluator',
     'range' : (40, 0,1),
@@ -22,28 +22,31 @@ variables['RandomForest_WP50']  = {
     'xaxis' : 'Random Forest score (LL)',
     'fold' : 3
 }
+'''
 
 
 variables['mll'] = {
-    'name': 'mll_',            #   variable name
+    'name': 'mll',            #   variable name
     'range' : (40,85,200),    #   variable range
     'xaxis' : 'm_{ll} [GeV]',  #   x axis name
     'fold' : 0
 }
 
 variables['ptll']  = {  
-    'name': 'ptll_',     
+    'name': 'ptll',     
     'range' : (20, 0,200),   
     'xaxis' : 'p_{T}^{ll} [GeV]',
     'fold' : 0
 }
 
+'''
 variables['mpmet']  = {
     'name': 'mpmet',
     'range' : (50, 0,100),
     'xaxis' : 'p_{T}^{ll} [GeV]',
     'fold' : 0
 }
+
 
 variables['drll']  = {
     'name': 'drll_',
@@ -65,6 +68,7 @@ variables['ptll_more']  = {
     'xaxis' : 'p_{T}^{ll} [GeV]',
     'fold' : 0
 }
+'''
 
 variables['pt1']  = { 
     'name': 'Lepton_pt[0]',     
@@ -116,13 +120,14 @@ variables['nvtx'] = {
     'fold'  : 3
 }
 
+'''
 variables['jetdeepb']  = {
     'name': 'Alt(Take(Jet_btagDeepFlavB, MyCleanJet_jetIdx), 0, -99)',
     'range' : (30,-1,1),
     'xaxis' : 'B tagger 1st jet (DeepB)',
     'fold' : 2
 }
-
+'''
 
 variables['trkMet']  = { 
     'name': 'TkMET_pt',
@@ -140,6 +145,7 @@ variables['puppimet']  = {
 
 ############# New Jet processing
 
+'''
 variables['re_njet']  = {
     'name': 'Sum(MyCleanJet_pt>30)',
     'range' : (5,0,5),
@@ -211,5 +217,6 @@ variables['re_jeteta2_noHorn']  = {
     'fold' : 0
 }
 
+'''
 
 

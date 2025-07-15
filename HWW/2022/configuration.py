@@ -47,7 +47,7 @@ nuisancesFile = "nuisances.py"
 # plotPath = "/eos/user/g/gpizzati/www/rdf/2016/"
 
 #: path to folder where to save plots
-plotPath = "Plots/{}".format(tag)
+plotPath = "plots_" + tag
 
 #: this lines are executed right before the runner on the condor node
 mountEOS = [

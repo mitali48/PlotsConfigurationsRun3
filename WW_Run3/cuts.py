@@ -17,42 +17,42 @@ cuts['ss']  = {
 
 
 cuts['ww2l2nu_top']  = {
-    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && topcr && ptll_>15 && PuppiMET_pt > 20',
+    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && topcr && ptll>15 && PuppiMET_pt > 20',
     'categories' : {
         'inc' :'Lepton_pt[0]>20'
     }
 }
 
 cuts['ww2l2nu_dytt']  = {
-    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && bVeto && mth_<40 && ptll_>15 && PuppiMET_pt > 20',
+    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && bVeto &&  ptll>15 && PuppiMET_pt > 20',
     'categories' : {
         'inc' : 'Lepton_pt[0]>20'
     }
 }
 
 cuts['ww2l2nu_sr']  = {
-    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && mll_>85 && bVeto && mth_>40 && mpmet>15 && ptll_>15 && PuppiMET_pt > 20',
+    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && mll>85 && bVeto &&  ptll>15 && PuppiMET_pt > 20',
     'categories' : {
         'inc' : 'Lepton_pt[0]>20'
     }
 }
 
 cuts['ww2l2nu_top_smp']  = {
-    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && topcr && ptll_>15 && PuppiMET_pt > 20',
+    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && topcr && ptll>15 && PuppiMET_pt > 20',
     'categories' : {
         'inc' :'Lepton_pt[0]>20'
     }
 }
 
 cuts['ww2l2nu_dytt_smp']  = {
-    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && bVeto && mll_<85 && ptll_<30',
+    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && bVeto && mll<85 && ptll<30',
     'categories' : {
         'inc' : 'Lepton_pt[0]>20'
     }
 }
 
 cuts['ww2l2nu_sr_smp']  = {
-    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && mll_>85 && bVeto',
+    'expr' : '(Lepton_pdgId[0] * Lepton_pdgId[1] == -11*13) && mll>85 && bVeto',
     'categories' : {
         'inc' : 'Lepton_pt[0]>20'
     }

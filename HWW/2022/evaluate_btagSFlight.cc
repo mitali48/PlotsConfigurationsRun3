@@ -79,7 +79,7 @@ class btagSFlight {
 };
 
 btagSFlight::btagSFlight(TString eff_map) {
-  cset = CorrectionSet::from_file("/afs/cern.ch/user/s/squinto/mkShapesRDF/mkShapesRDF/processor/data/jsonpog-integration/POG/BTV/2022_Summer22/btagging.json.gz");
+  cset = CorrectionSet::from_file("/afs/cern.ch/user/m/misharma/private/Latinos/HWWRUn3/mkShapesRDF/mkShapesRDF/processor/data/jetvetomaps/Run2022/btagging.json");
  
   TFile *reff = TFile::Open(eff_map, "READ");
   h_ljet_eff  = (TH2F*)reff->Get("ljet_eff")->Clone();
