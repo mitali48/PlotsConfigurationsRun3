@@ -40,39 +40,39 @@ aliases['LepWPSF'] = {
 Tag = 'ele_'+eleWP+'_mu_'+muWP
 
 aliases["fakeW"] = {
-    "expr": f"fakeW_{Tag}_2l0j*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1j*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2j*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)>30.0)",
+    "expr": f"fakeW_{Tag}_2l0j*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1j*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2j*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)>30.0)",
     'samples': ['Fake', 'Fake_EG', 'Fake_Mu', 'Fake_EMu']
 }
 aliases["fakeWEleUp"] = {
-    "expr": f"fakeW_{Tag}_2l0jElUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jElUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jElUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)>30.0)",
+    "expr": f"fakeW_{Tag}_2l0jElUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jElUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jElUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)>30.0)",
     'samples': ['Fake', 'Fake_EG', 'Fake_Mu', 'Fake_EMu']
 }
 aliases["fakeWEleDown"] = {
-    "expr": f"fakeW_{Tag}_2l0jElDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jElDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jElDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)>30.0)",
+    "expr": f"fakeW_{Tag}_2l0jElDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jElDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jElDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)>30.0)",
     'samples': ['Fake', 'Fake_EG', 'Fake_Mu', 'Fake_EMu']
 }
 aliases["fakeWMuUp"] = {
-    "expr": f"fakeW_{Tag}_2l0jMuUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jMuUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jMuUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)>30.0)",
+    "expr": f"fakeW_{Tag}_2l0jMuUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jMuUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jMuUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)>30.0)",
     'samples': ['Fake', 'Fake_EG', 'Fake_Mu', 'Fake_EMu']
 }
 aliases["fakeWMuDown"] = {
-    "expr": f"fakeW_{Tag}_2l0jMuDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jMuDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jMuDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)>30.0)",
+    "expr": f"fakeW_{Tag}_2l0jMuDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jMuDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jMuDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)>30.0)",
     'samples': ['Fake', 'Fake_EG', 'Fake_Mu', 'Fake_EMu']
 }
 aliases["fakeWStatEleUp"] = {
-    "expr": f"fakeW_{Tag}_2l0jstatElUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jstatElUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jstatElUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)>30.0)",
+    "expr": f"fakeW_{Tag}_2l0jstatElUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jstatElUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jstatElUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)>30.0)",
     'samples': ['Fake', 'Fake_EG', 'Fake_Mu', 'Fake_EMu']
 }
 aliases["fakeWStatEleDown"] = {
-    "expr": f"fakeW_{Tag}_2l0jstatElDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jstatElDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jstatElDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)>30.0)",
+    "expr": f"fakeW_{Tag}_2l0jstatElDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jstatElDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jstatElDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)>30.0)",
     'samples': ['Fake', 'Fake_EG', 'Fake_Mu', 'Fake_EMu']
 }
 aliases["fakeWStatMuUp"] = {
-    "expr": f"fakeW_{Tag}_2l0jstatMuUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jstatMuUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jstatMuUp*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)>30.0)",
+    "expr": f"fakeW_{Tag}_2l0jstatMuUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jstatMuUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jstatMuUp*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)>30.0)",
     'samples': ['Fake', 'Fake_EG', 'Fake_Mu', 'Fake_EMu']
 }
 aliases["fakeWStatMuDown"] = {
-    "expr": f"fakeW_{Tag}_2l0jstatMuDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jstatMuDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jstatMuDown*(Alt(MyCleanJet_pt[abs(MyCleanJet_eta)<=2.5], 1, 0)>30.0)",
+    "expr": f"fakeW_{Tag}_2l0jstatMuDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)<30.0) + fakeW_{Tag}_2l1jstatMuDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 0, 0)>30.0 && Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)<30.0) + fakeW_{Tag}_2l2jstatMuDown*(Alt(CleanJet_pt[abs(CleanJet_eta)<=2.5], 1, 0)>30.0)",
     'samples': ['Fake', 'Fake_EG', 'Fake_Mu', 'Fake_EMu']
 }
 
@@ -98,7 +98,7 @@ aliases['fakeWMuUp'] = {
 aliases['fakeWMuDown'] = {
     'expr': 'fakeW2l_ele_'+eleWP+'_mu_'+muWP+'_MuDown',
     'samples': ['Fake', 'Fake_EG', 'Fake_Mu', 'Fake_EMu']
-}
+.aliases.py.swp}
 aliases['fakeWStatEleUp'] = {
     'expr': 'fakeW2l_ele_'+eleWP+'_mu_'+muWP+'_statEleUp',
     'samples': ['Fake', 'Fake_EG', 'Fake_Mu', 'Fake_EMu']
@@ -133,15 +133,15 @@ aliases['Top_pTrw'] = {
 
 # No jet with pt > 30 GeV
 aliases['zeroJet'] = {
-    'expr': 'Alt(MyCleanJet_pt, 0, 0) < 30.'
+    'expr': 'Alt(CleanJet_pt, 0, 0) < 30.'
 }
 
 aliases['oneJet'] = {
-    'expr': 'Alt(MyCleanJet_pt, 0, 0) > 30.'
+    'expr': 'Alt(CleanJet_pt, 0, 0) > 30.'
 }
 
 aliases['multiJet'] = {
-    'expr': 'Alt(MyCleanJet_pt, 1, 0) > 30.'
+    'expr': 'Alt(CleanJet_pt, 1, 0) > 30.'
 }
 
 # DeepFlavB = DeepJet  
@@ -155,11 +155,11 @@ bWP   = bWP_loose_deepFlavB # [bWP_loose_deepB, bWP_loose_deepFlavB]
 bSF   = 'deepjet'        # ['deepcsv','deepjet']
 
 aliases['bVeto'] = {
-    'expr': f'Sum(MyCleanJet_pt > 20. && abs(MyCleanJet_eta) < 2.5 && Take(Jet_btag{bAlgo}, MyCleanJet_jetIdx) > {bWP}) == 0'
+    'expr': f'Sum(CleanJet_pt > 20. && abs(CleanJet_eta) < 2.5 && Take(Jet_btag{bAlgo}, CleanJet_jetIdx) > {bWP}) == 0'
 }
 
 aliases['bReq'] = { 
-    'expr': f'Sum(MyCleanJet_pt > 30. && abs(MyCleanJet_eta) < 2.5 && Take(Jet_btag{bAlgo}, MyCleanJet_jetIdx) > {bWP}) >= 1'
+    'expr': f'Sum(CleanJet_pt > 30. && abs(CleanJet_eta) < 2.5 && Take(Jet_btag{bAlgo}, CleanJet_jetIdx) > {bWP}) >= 1'
 }
 
 # CR definition
@@ -171,12 +171,12 @@ aliases['topcr'] = {
 
 # SF
 aliases['bVetoSF'] = {
-    'expr': 'TMath::Exp(Sum(LogVec((MyCleanJet_pt>20 && abs(MyCleanJet_eta)<2.5)*Take(Jet_btagSF_deepjet_shape, MyCleanJet_jetIdx)+1*(MyCleanJet_pt<20 || abs(MyCleanJet_eta)>2.5))))',
+    'expr': 'TMath::Exp(Sum(LogVec((CleanJet_pt>20 && abs(CleanJet_eta)<2.5)*Take(Jet_btagSF_deepjet_shape, CleanJet_jetIdx)+1*(CleanJet_pt<20 || abs(CleanJet_eta)>2.5))))',
     'samples': mc
 }
 
 aliases['bReqSF'] = {
-    'expr': 'TMath::Exp(Sum(LogVec((MyCleanJet_pt>30 && abs(MyCleanJet_eta)<2.5)*Take(Jet_btagSF_deepjet_shape, MyCleanJet_jetIdx)+1*(MyCleanJet_pt<30 || abs(MyCleanJet_eta)>2.5))))',
+    'expr': 'TMath::Exp(Sum(LogVec((CleanJet_pt>30 && abs(CleanJet_eta)<2.5)*Take(Jet_btagSF_deepjet_shape, CleanJet_jetIdx)+1*(CleanJet_pt<30 || abs(CleanJet_eta)>2.5))))',
     'samples': mc
 }
 
@@ -229,8 +229,9 @@ aliases['SFweightMuDown'] = {
     'samples': mc
 }
 
-aliases["nMyCleanJet"] = {
-    'expr': 'MyCleanJet_pt.size()'
+'''
+aliases["nCleanJet"] = {
+    'expr': 'CleanJet_pt.size()'
 }
 
 aliases['WWvariables_B'] = {
@@ -317,11 +318,12 @@ aliases['dphilmet_'] = {
     'afterNuis': True
 }
 
+
 aliases['RandomForest_evaluator'] = {
     'linesToAdd' : ['.L /afs/cern.ch/work/s/sblancof/private/Run3Analysis/mkShapesRDF/examples/extended/evaluate_RF_polarization.cc+'],
     'class' : 'evaluate_dnn',
     'args': 'Lepton_pt[0],Lepton_pt[1],mll_,mth_,mtw1_,mtw2_,ptll_,drll_,dphill_,PuppiMET_pt,PuppiMET_phi,detall_,mpmet,dphilmet_,cosTheta_CS,dphi_star3,costheta_CS2,ME_WW_cos,ME_WW_cos1,ME_WW_Eta',
     'afterNuis': True
 }
-
+'''
 

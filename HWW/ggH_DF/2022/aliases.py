@@ -171,6 +171,7 @@ tagger = 'deepJet' # ['deepJet', 'particleNet', 'robustParticleTransformer']
 eff_map_year = '2022' # ['2022', '20222', '2023', '20232']
 year = '2022_Summer22'
 
+
 for flavour in ['bc', 'light']:
     for shift in ['central', 'up_uncorrelated', 'down_uncorrelated', 'up_correlated', 'down_correlated']:
         btagsf = 'btagSF' + flavour
